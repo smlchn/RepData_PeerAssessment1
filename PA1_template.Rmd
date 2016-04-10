@@ -8,18 +8,70 @@ output:
 
 ## Loading and preprocessing the data
 
+#Reading the dataset
+setwd("~/data science/reproducibleresearch/repdata-data-activity")
+datasetFileName <- "activity.csv"
+dataset <- read.table(datasetFileName, sep = ",", header = TRUE, stringsAsFactors= F)
+dataset$date <- as.Date(dataset$date, format = "%Y-%m-%d")
+dataset$steps <- as.numeric(dataset$steps)
+dataset$interval <- as.numeric(dataset$interval)
 
 
 ## What is mean total number of steps taken per day?
+library("sqldf")
+totalStepsByDay <- sqldf("select date, sum(steps) steps from dataset where steps is not null group by date order by date")
+imagesFolder = "~/data science/reproducibleresearch/repdata-data-activity"
+png(paste(imagesFolder, "totalStepsPerDayHistOriginal.png", sep = "/"))
+hist(totalStepsByDay$steps, col="red", main = "Number of steps taken each day", xlab = "Steps")
+dev.off()
 
+mean(totalStepsByDay$steps, na.rm = TRUE)
+
+median(totalStepsByDay$steps, na.rm = TRUE)
 
 
 ## What is the average daily activity pattern?
+avgStepsPerInterval <- sqldf("select interval, avg(steps) steps from dataset where steps is not null group by interval order by interval")
+png(paste(imagesFolder, "avgStepsPerInterval.png", sep = "/"))
+plot(avgStepsPerInterval$interval, avgStepsPerInterval$steps, type="l", xlab = "Interval", ylab="Average steps count")
+dev.off()
+
+avgStepsPerInterval$interval[avgStepsPerInterval$steps == max(avgStepsPerInterval$steps)]
 
 
 
 ## Imputing missing values
 
+sqldf("select count(*) count from dataset where steps is null")[, "count"]
 
+datasetWithoutNA <- sqldf(c("update dataset set steps = (select steps from avgStepsPerInterval where avgStepsPerInterval.interval = dataset.interval) where steps is null", "select * from main.dataset"))
+
+totalStepsByDay <- sqldf("select date, sum(steps) steps from datasetWithoutNA where steps is not null group by date order by date")
+png(paste(imagesFolder, "totalStepsByDay.png", sep = "/"))
+hist(totalStepsByDay$steps, col="red", main = "Number of steps taken each day", xlab = "Steps")
+dev.off()
+
+mean(totalStepsByDay$steps, na.rm = TRUE)
+median(totalStepsByDay$steps, na.rm = TRUE)
+
+#No change in mean, but there is changes in median
+#inputting missing data shifts the median of dataset but no changes to mean since null values are replaced with mean values
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+
+datasetWithoutNA$"day" <- weekdays(datasetWithoutNA$"date")
+
+datasetWithoutNA <- sqldf(c("update datasetWithoutNA set day = 'weekend' where day in ('Saturday', 'Sunday')", "select * from main.datasetWithoutNA"))
+datasetWithoutNA <- sqldf(c("update datasetWithoutNA set day = 'weekday' where day <> 'weekend'", "select * from main.datasetWithoutNA"))
+
+groupedByWeekday <- aggregate(steps ~ interval + day, data = datasetWithoutNA, mean)
+
+qplot(x = interval,
+      y = steps,
+      geom="path",
+      data = average_steps_by_time_weekend, 
+      xlab="Time interval",
+      ylab="Average steps",
+      main="Activity Patterns\nWeekdays vs. Weekends",
+      facets = day ~ .)
