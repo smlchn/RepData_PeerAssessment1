@@ -54,8 +54,8 @@ dev.off()
 mean(totalStepsByDay$steps, na.rm = TRUE)
 median(totalStepsByDay$steps, na.rm = TRUE)
 
-#No change in mean, but there is changes in median
-#inputting missing data shifts the median of dataset but no changes to mean since null values are replaced with mean values
+###No change in mean, but there is changes in median
+###inputting missing data shifts the median of dataset but no changes to mean since null values are replaced with mean values
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
